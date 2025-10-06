@@ -62,6 +62,13 @@ def load_data():
         logger.error(f"Ma'lumotlarni o'qishda xatolik: {e}")
         raise
 
+def find_column(df, keywords):
+    """Ustun nomida berilgan kalit so'zlarni qidiradi"""
+    for col in df.columns:
+        if any(keyword in col.lower() for keyword in keywords):
+            return col
+    return None
+
 # /start komandasi
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -74,22 +81,36 @@ Pasport raqamingizni yuboring, men guruhingiz va guruh havolangizni topib berama
     """
     bot.send_message(message.chat.id, welcome_text)
 
-# /help komandasi
-@bot.message_handler(commands=['help'])
-def help_command(message):
-    help_text = """
-🤖 Botdan foydalanish:
-
-1. Pasport raqamingizni yuboring
-2. Bot sizning guruhingiz va guruh havolasini qaytaradi
-
-📋 Misol: AB1234567
-    """
-    bot.send_message(message.chat.id, help_text)
+# /debug komandasi - ustunlarni tekshirish uchun
+@bot.message_handler(commands=['debug'])
+def debug_info(message):
+    try:
+        data = load_data()
+        columns_info = "📊 Jadval ustunlari:\n\n"
+        for i, col in enumerate(data.columns, 1):
+            columns_info += f"{i}. {col}\n"
+        
+        # Avtomatik topilgan ustunlar
+        passport_col = find_column(data, ['pasport', 'passport'])
+        group_col = find_column(data, ['guruh', 'group'])
+        link_col = find_column(data, ['link', 'havola', 'url'])
+        
+        columns_info += f"\n🔍 Avtomatik topilgan ustunlar:\n"
+        columns_info += f"Pasport: {passport_col if passport_col else 'Topilmadi'}\n"
+        columns_info += f"Guruh: {group_col if group_col else 'Topilmadi'}\n"
+        columns_info += f"Link: {link_col if link_col else 'Topilmadi'}\n"
+        
+        bot.send_message(message.chat.id, columns_info)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Debug xatosi: {e}")
 
 # Pasport raqamiga qarab qidirish
 @bot.message_handler(func=lambda msg: True)
 def check_passport(message):
+    # /debug komandasini tekshirish
+    if message.text.startswith('/'):
+        return
+    
     passport = message.text.strip().upper()
     
     # Pasport formatini tekshirish
@@ -106,34 +127,30 @@ def check_passport(message):
         bot.send_chat_action(message.chat.id, 'typing')
         data = load_data()
         
-        # Ustun nomlarini tekshirish
-        logger.info(f"Mavjud ustunlar: {list(data.columns)}")
+        # Ustun nomlarini topish
+        passport_column = find_column(data, ['pasport', 'passport'])
+        group_column = find_column(data, ['guruh', 'group'])
+        link_column = find_column(data, ['link', 'havola', 'url'])
         
-        # Sizning ustunlaringizga mos qidiruv
-        passport_column = None
-        group_column = None
-        link_column = None
-        
-        # Ustun nomlarini tekshirish
-        for col in data.columns:
-            if 'pasport' in col.lower():
-                passport_column = col
-            if 'guruh' in col.lower() and 'link' not in col.lower():
-                group_column = col
-            if 'link' in col.lower():
-                link_column = col
+        logger.info(f"Topilgan ustunlar: pasport={passport_column}, guruh={group_column}, link={link_column}")
         
         if not passport_column:
-            bot.send_message(message.chat.id, "❌ Jadvalda pasport raqami ustuni topilmadi.")
+            error_msg = f"❌ Jadvalda pasport raqami ustuni topilmadi.\n\nMavjud ustunlar:\n"
+            for col in data.columns:
+                error_msg += f"• {col}\n"
+            error_msg += "\n/debug buyrug'i orqali batafsil ma'lumot oling"
+            bot.send_message(message.chat.id, error_msg)
             return
 
         # Pasport raqamini qidirish
-        row = data.loc[data[passport_column].astype(str).str.upper() == passport]
+        # NaN qiymatlarni tozalash
+        data[passport_column] = data[passport_column].fillna('').astype(str)
+        row = data[data[passport_column].str.upper() == passport]
 
         if not row.empty:
             # Guruh va link ustunlarini topish
-            group = row.iloc[0][group_column] if group_column and group_column in row.columns else "Noma'lum"
-            link = row.iloc[0][link_column] if link_column and link_column in row.columns else "Havola mavjud emas"
+            group = row.iloc[0][group_column] if group_column and group_column in row.columns and pd.notna(row.iloc[0][group_column]) else "Noma'lum"
+            link = row.iloc[0][link_column] if link_column and link_column in row.columns and pd.notna(row.iloc[0][link_column]) else "Havola mavjud emas"
             
             result_text = f"""
 ✅ Ma'lumot topildi!
