@@ -105,24 +105,23 @@ def start(message):
 @bot.message_handler(func=lambda msg: msg.text == "📞 INFO")
 def info_command(message):
     info_text = (
-        "🏫 CYBER UNIVERSITY\n\n"
-        "📞 Murojaatlar uchun: 558885555\n\n"
-        "🌐 Ijtimoiy tarmoqlar:\n\n"
+        "🏫 **CYBER UNIVERSITY**\n\n"
+        "📞 *Murojaatlar uchun:* 558885555\n\n"
+        "🌐 **Ijtimoiy tarmoqlar:**\n\n"
         "📲 Telegram: https://t.me/cyberuni_uz\n"
         "🌐 Veb-sayt: csu.uz\n"
         "📸 Instagram: instagram.com/csu.uz\n"
         "📘 Facebook: www.facebook.com/profile.php?id=61577521082631\n"
         "💼 LinkedIn: www.linkedin.com/company/csu_uz/\n"
         "📚 Kutubxona: https://t.me/CYBERUNI_LIBRARY\n\n"
-        "📍 Manzil: Toshkent shahar\n"
-        "🎓 Talabalar soni: 5000+\n"
-        "👨‍🏫 O'qituvchilar soni: 200+"
+        "📍 *Manzil:* Toshkent viloyati Nurafshon shahri"
     )
     
     bot.send_message(
         message.chat.id,
         info_text,
-        reply_markup=create_main_keyboard()
+        reply_markup=create_main_keyboard(),
+        parse_mode='Markdown'
     )
 
 # Mening ma'lumotlarim tugmasi
