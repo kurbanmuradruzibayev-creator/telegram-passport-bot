@@ -94,9 +94,11 @@ def create_main_keyboard():
     
     keyboard.add(
         KeyboardButton("🔍 Pasport qidirish"),
-        KeyboardButton("ℹ️ Mening ma'lumotlarim"),
+        KeyboardButton("ℹ️ Mening ma'lumotlarim")
+    )
+    keyboard.add(
         KeyboardButton("🆘 Yordam"),
-        KeyboardButton("🐛 Debug ma'lumot")
+        KeyboardButton("📞 INFO")
     )
     
     return keyboard
@@ -161,7 +163,32 @@ def start(message):
         reply_markup=create_main_keyboard()
     )
 
-# INFO tugmasi
+# INFO tugmasi - universitet haqida ma'lumot
+@bot.message_handler(func=lambda msg: msg.text == "📞 INFO")
+def info_command(message):
+    info_text = (
+        "🏫 **CYBER UNIVERSITY**\n\n"
+        "📞 *Murojaatlar uchun:* `558885555`\n\n"
+        "🌐 **Ijtimoiy tarmoqlar:**\n\n"
+        "• 📲 Telegram: https://t.me/cyberuni_uz\n"
+        "• 🌐 Veb-sayt: csu.uz\n"
+        "• 📸 Instagram: instagram.com/csu.uz\n"
+        "• 📘 Facebook: www.facebook.com/profile.php?id=61577521082631\n"
+        "• 💼 LinkedIn: www.linkedin.com/company/csu_uz/\n"
+        "• 📚 Kutubxona: https://t.me/CYBERUNI_LIBRARY\n\n"
+        "📍 *Manzil:* Toshkent shahar\n"
+        "🎓 *Talabalar soni:* 5000+\n"
+        "👨‍🏫 *O'qituvchilar soni:* 200+"
+    )
+    
+    bot.send_message(
+        message.chat.id,
+        info_text,
+        reply_markup=create_main_keyboard(),
+        parse_mode='Markdown'
+    )
+
+# INFO tugmasi - foydalanuvchi ma'lumotlari
 @bot.message_handler(func=lambda msg: msg.text == "ℹ️ Mening ma'lumotlarim")
 def user_info(message):
     user_id = message.from_user.id
@@ -188,7 +215,11 @@ def user_info(message):
             f"⏰ So'ngi foydalanish: {last_used_str}"
         )
     else:
-        info_text = "📊 Siz hali foydalanmagansiz. Birinchi marta pasport qidiruvingizda ma'lumotlaringiz saqlanadi."
+        info_text = (
+            "📊 Siz hali foydalanmagansiz.\n\n"
+            "Birinchi marta pasport qidiruvingizda ma'lumotlaringiz saqlanadi.\n"
+            "🔍 Pasport qidirish tugmasini bosing va pasport raqamingizni yuboring."
+        )
     
     bot.send_message(
         message.chat.id,
@@ -200,57 +231,26 @@ def user_info(message):
 @bot.message_handler(func=lambda msg: msg.text == "🆘 Yordam")
 def help_command(message):
     help_text = (
-        "🤖 Botdan foydalanish:\n\n"
-        "1. 🔍 Pasport qidirish - pasport raqamingizni kiriting\n"
-        "2. ℹ️ Mening ma'lumotlarim - sizning foydalanish statistikangiz\n"
-        "3. 🐛 Debug ma'lumot - texnik ma'lumotlar\n\n"
-        "📝 Pasport formati: AA1234567\n"
-        "🚫 Har bir foydalanuvchi faqat 1 marta foydalana oladi"
+        "🤖 **Botdan foydalanish:**\n\n"
+        "1. 🔍 *Pasport qidirish* - pasport raqamingizni kiriting\n"
+        "2. ℹ️ *Mening ma'lumotlarim* - sizning foydalanish statistikangiz\n"
+        "3. 📞 *INFO* - universitet haqida batafsil ma'lumot\n\n"
+        "📝 **Pasport formati:** AA1234567\n"
+        "🚫 **Diqqat:** Har bir foydalanuvchi faqat 1 marta foydalana oladi\n\n"
+        "❓ **Savollar bo'lsa:** 558885555"
     )
     
     bot.send_message(
         message.chat.id,
         help_text,
-        reply_markup=create_main_keyboard()
+        reply_markup=create_main_keyboard(),
+        parse_mode='Markdown'
     )
-
-# Debug
-@bot.message_handler(func=lambda msg: msg.text == "🐛 Debug ma'lumot")
-def debug_info(message):
-    try:
-        data = load_data()
-        
-        debug_text = "🔍 DEBUG MA'LUMOTLARI:\n\n"
-        debug_text += f"📊 Jadval o'lchami: {data.shape}\n"
-        debug_text += f"🔤 Ustunlar soni: {len(data.columns)}\n\n"
-        
-        debug_text += "📋 USTUNLAR RO'YXATI:\n"
-        for i, col in enumerate(data.columns, 1):
-            debug_text += f"{i}. '{col}'\n"
-        
-        if len(data) > 0:
-            debug_text += "\n📝 BIRINCHI 3 QATOR:\n"
-            for i in range(min(3, len(data))):
-                row_text = f"Qator {i+1}: "
-                for col in data.columns:
-                    value = data.iloc[i][col]
-                    if pd.notna(value) and value != "":
-                        row_text += f"'{value}' "
-                    else:
-                        row_text += "NULL "
-                debug_text += row_text + "\n"
-        else:
-            debug_text += "\n📝 Jadvalda ma'lumotlar yo'q"
-        
-        bot.send_message(message.chat.id, debug_text)
-        
-    except Exception as e:
-        bot.send_message(message.chat.id, f"Debug xatosi: {e}")
 
 # Pasport raqamiga qarab qidirish
 @bot.message_handler(func=lambda msg: True)
 def check_passport(message):
-    if message.text in ["🔍 Pasport qidirish", "ℹ️ Mening ma'lumotlarim", "🆘 Yordam", "🐛 Debug ma'lumot"]:
+    if message.text in ["🔍 Pasport qidirish", "ℹ️ Mening ma'lumotlarim", "🆘 Yordam", "📞 INFO"]:
         return
     
     user_id = message.from_user.id
@@ -259,7 +259,9 @@ def check_passport(message):
     if not check_usage_limit(user_id):
         bot.send_message(
             message.chat.id,
-            "🚫 Siz faqat 1 marta foydalana olasiz! Bu shaxsiy ma'lumotlarni himoya qilish uchun.",
+            "🚫 Siz faqat 1 marta foydalana olasiz!\n\n"
+            "Bu shaxsiy ma'lumotlarni himoya qilish uchun qo'yilgan cheklov.\n\n"
+            "📞 Qo'shimcha ma'lumot uchun: 558885555",
             reply_markup=create_main_keyboard()
         )
         return
@@ -270,8 +272,12 @@ def check_passport(message):
     if not re.match(r'^[A-Z]{2}\d{7}$', passport):
         bot.send_message(
             message.chat.id, 
-            "❌ Noto'g'ri format! Pasport raqami quyidagi formatda bo'lishi kerak: AA1234567",
-            reply_markup=create_main_keyboard()
+            "❌ Noto'g'ri format!\n\n"
+            "Pasport raqami quyidagi formatda bo'lishi kerak: **AA1234567**\n\n"
+            "📝 Misol: AB1234567, CD9876543\n\n"
+            "Iltimos, qaytadan kiriting:",
+            reply_markup=create_main_keyboard(),
+            parse_mode='Markdown'
         )
         return
 
@@ -320,31 +326,37 @@ def check_passport(message):
                     fakultet = fakultet_value if pd.notna(fakultet_value) else "Noma'lum"
                 
                 result_text = (
-                    "✅ Ma'lumot topildi!\n\n"
-                    f"📋 Pasport: {passport}\n"
-                    f"👤 Ism: {ism}\n"
-                    f"🏫 Fakultet: {fakultet}\n"
-                    f"👥 Guruh: {group}\n"
-                    f"🔗 Havola: {link}\n\n"
-                    "Yana qayta tekshirishingiz mumkin!"
+                    "✅ **Ma'lumot topildi!**\n\n"
+                    f"📋 **Pasport:** {passport}\n"
+                    f"👤 **Ism:** {ism}\n"
+                    f"🏫 **Fakultet:** {fakultet}\n"
+                    f"👥 **Guruh:** {group}\n"
+                    f"🔗 **Havola:** {link}\n\n"
+                    "🎓 **CYBER UNIVERSITY** da o'qishingiz bilan tabriklaymiz!"
                 )
                 bot.send_message(
                     message.chat.id, 
                     result_text,
-                    reply_markup=create_main_keyboard()
+                    reply_markup=create_main_keyboard(),
+                    parse_mode='Markdown'
                 )
             else:
                 bot.send_message(
                     message.chat.id, 
-                    f"❌ {passport} raqami bo'yicha ma'lumot topilmadi.\n\n"
-                    "Iltimos, pasport raqamingizni qaytadan tekshiring yoki "
-                    "administrator bilan bog'laning.",
-                    reply_markup=create_main_keyboard()
+                    f"❌ **{passport}** raqami bo'yicha ma'lumot topilmadi.\n\n"
+                    "Iltimos, quyidagilarni tekshiring:\n"
+                    "• Pasport raqamingizni to'g'ri kiritganingizni\n"
+                    "• Katta harflarda kiritganingizni\n"
+                    "• Format: AA1234567\n\n"
+                    "📞 Yordam kerak bo'lsa: 558885555",
+                    reply_markup=create_main_keyboard(),
+                    parse_mode='Markdown'
                 )
         else:
             bot.send_message(
                 message.chat.id, 
-                "❌ Jadvalda ma'lumotlar topilmadi yoki jadval bo'sh.",
+                "❌ Jadvalda ma'lumotlar topilmadi yoki jadval bo'sh.\n\n"
+                "📞 Texnik yordam uchun: 558885555",
                 reply_markup=create_main_keyboard()
             )
             
@@ -352,9 +364,12 @@ def check_passport(message):
         logger.error(f"Xatolik: {e}")
         bot.send_message(
             message.chat.id, 
-            f"😔 Xatolik yuz berdi: {str(e)[:100]}\n\n"
-            "Iltimos, keyinroq qayta urinib ko'ring.",
-            reply_markup=create_main_keyboard()
+            "😔 **Xatolik yuz berdi!**\n\n"
+            f"Xato: {str(e)[:100]}\n\n"
+            "Iltimos, keyinroq qayta urinib ko'ring yoki\n"
+            "📞 Texnik yordam uchun: 558885555",
+            reply_markup=create_main_keyboard(),
+            parse_mode='Markdown'
         )
 
 if __name__ == "__main__":
