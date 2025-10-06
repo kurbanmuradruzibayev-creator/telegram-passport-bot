@@ -6,6 +6,8 @@ import json
 import re
 import logging
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+import json
+from datetime import datetime
 
 # Logging sozlamalari
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +27,67 @@ if not SHEET_ID:
     raise ValueError("SHEET_ID mavjud emas")
 
 API_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:json&gid={SHEET_GID}"
+
+# JSON fayl orqali foydalanuvchi ma'lumotlarini saqlash
+USERS_FILE = 'users.json'
+
+def load_users():
+    """Foydalanuvchilarni yuklash"""
+    try:
+        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_users(users):
+    """Foydalanuvchilarni saqlash"""
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+
+def check_usage_limit(user_id):
+    """Foydalanish cheklovini tekshirish"""
+    users = load_users()
+    user = users.get(str(user_id))
+    
+    if user and user.get('usage_count', 0) >= 1:
+        return False  # Cheklovga duchor
+    return True  # Foydalanish mumkin
+
+def update_user_usage(message, action_type="search"):
+    """Foydalanuvchi ma'lumotlarini yangilash"""
+    user_id = str(message.from_user.id)
+    username = message.from_user.username
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    
+    users = load_users()
+    
+    if user_id in users:
+        # Yangilash - faqat search uchun hisoblab chiqamiz
+        if action_type == "search":
+            users[user_id]['usage_count'] += 1
+        users[user_id]['last_used'] = datetime.now().isoformat()
+        users[user_id]['username'] = username
+        users[user_id]['first_name'] = first_name
+        users[user_id]['last_name'] = last_name
+    else:
+        # Yangi foydalanuvchi
+        users[user_id] = {
+            'user_id': user_id,
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'usage_count': 1 if action_type == "search" else 0,
+            'created_at': datetime.now().isoformat(),
+            'last_used': datetime.now().isoformat()
+        }
+    
+    save_users(users)
+
+def get_user_info(user_id):
+    """Foydalanuvchi ma'lumotlarini olish"""
+    users = load_users()
+    return users.get(str(user_id))
 
 def create_main_keyboard():
     """Asosiy keyboard yaratish"""
@@ -89,21 +152,29 @@ def load_data():
 # /start komandasi
 @bot.message_handler(commands=['start'])
 def start(message):
+    # Foydalanuvchi ma'lumotlarini yangilash (faqat ro'yxatdan o'tkazish)
+    update_user_usage(message, "info")
+    
     welcome_text = (
         "Assalomu alaykum! 👋\n\n"
         "Pasport raqamingizni yuboring, men guruhingiz va guruh havolangizni topib beraman.\n\n"
-        "📝 Pasport raqamini shu formatda yuboring: AA1234567"
+        "📝 Pasport raqamini shu formatda yuboring: AA1234567\n\n"
+        "🚫 **DIQQAT:** Har bir foydalanuvchi faqat **1 MARTA** foydalana oladi!"
     )
     
     bot.send_message(
         message.chat.id, 
         welcome_text,
-        reply_markup=create_main_keyboard()
+        reply_markup=create_main_keyboard(),
+        parse_mode='Markdown'
     )
 
 # INFO tugmasi - universitet haqida ma'lumot
 @bot.message_handler(func=lambda msg: msg.text == "📞 INFO")
 def info_command(message):
+    # Foydalanuvchi ma'lumotlarini yangilash (cheklovsiz)
+    update_user_usage(message, "info")
+    
     info_text = (
         "🏫 **CYBER UNIVERSITY**\n\n"
         "📞 *Murojaatlar uchun:* 558885555\n\n"
@@ -114,7 +185,8 @@ def info_command(message):
         "📘 Facebook: www.facebook.com/profile.php?id=61577521082631\n"
         "💼 LinkedIn: www.linkedin.com/company/csu_uz/\n"
         "📚 Kutubxona: https://t.me/CYBERUNI_LIBRARY\n\n"
-        "📍 *Manzil:* Toshkent viloyati Nurafshon shahri"
+        "📍 *Manzil:* Toshkent viloyati Nurafshon shahri\n\n"
+        "🔒 *Ma'lumotlar xavfsizligi:* Har bir talaba faqat 1 marta so'rov yuborishi mumkin"
     )
     
     bot.send_message(
@@ -127,35 +199,72 @@ def info_command(message):
 # Mening ma'lumotlarim tugmasi
 @bot.message_handler(func=lambda msg: msg.text == "ℹ️ Mening ma'lumotlarim")
 def user_info(message):
-    info_text = (
-        "📊 Siz hali foydalanmagansiz.\n\n"
-        "Birinchi marta pasport qidiruvingizda ma'lumotlaringiz saqlanadi.\n"
-        "🔍 Pasport qidirish tugmasini bosing va pasport raqamingizni yuboring."
-    )
+    # Foydalanuvchi ma'lumotlarini yangilash (cheklovsiz)
+    update_user_usage(message, "info")
+    
+    user_id = message.from_user.id
+    user_data = get_user_info(user_id)
+    
+    if user_data:
+        created_at = user_data.get('created_at', '')
+        last_used = user_data.get('last_used', '')
+        usage_count = user_data.get('usage_count', 0)
+        
+        # Sana formatini soddalashtirish
+        created_str = created_at.split('T')[0] if created_at else "Noma'lum"
+        last_used_str = last_used.split('T')[0] if last_used else "Hali foydalanilmagan"
+        
+        full_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or "Noma'lum"
+        
+        info_text = (
+            f"📊 **Sizning ma'lumotlaringiz:**\n\n"
+            f"👤 ID: {user_id}\n"
+            f"📛 Ism: {full_name}\n"
+            f"📅 Birinchi foydalanish: {created_str}\n"
+            f"🔢 **Foydalanishlar soni: {usage_count}/1**\n"
+            f"⏰ So'ngi foydalanish: {last_used_str}\n\n"
+            f"🚫 **Cheklov:** {1 - usage_count} marta qoldi"
+        )
+    else:
+        info_text = (
+            "📊 Siz hali foydalanmagansiz.\n\n"
+            "Birinchi marta pasport qidiruvingizda ma'lumotlaringiz saqlanadi.\n"
+            "🔍 Pasport qidirish tugmasini bosing va pasport raqamingizni yuboring.\n\n"
+            "🚫 **Cheklov:** 1 marta qoldi"
+        )
     
     bot.send_message(
         message.chat.id,
         info_text,
-        reply_markup=create_main_keyboard()
+        reply_markup=create_main_keyboard(),
+        parse_mode='Markdown'
     )
 
 # Yordam tugmasi
 @bot.message_handler(func=lambda msg: msg.text == "🆘 Yordam")
 def help_command(message):
+    # Foydalanuvchi ma'lumotlarini yangilash (cheklovsiz)
+    update_user_usage(message, "info")
+    
     help_text = (
-        "🤖 Botdan foydalanish:\n\n"
-        "1. 🔍 Pasport qidirish - pasport raqamingizni kiriting\n"
-        "2. ℹ️ Mening ma'lumotlarim - sizning foydalanish statistikangiz\n"
-        "3. 📞 INFO - universitet haqida batafsil ma'lumot\n\n"
-        "📝 Pasport formati: AA1234567\n"
-        "🚫 Diqqat: Har bir foydalanuvchi faqat 1 marta foydalana oladi\n\n"
+        "🤖 **Botdan foydalanish:**\n\n"
+        "1. 🔍 *Pasport qidirish* - pasport raqamingizni kiriting\n"
+        "2. ℹ️ *Mening ma'lumotlarim* - sizning foydalanish statistikangiz\n"
+        "3. 📞 *INFO* - universitet haqida batafsil ma'lumot\n\n"
+        "📝 **Pasport formati:** AA1234567\n"
+        "🚫 **DIQQAT:** Har bir foydalanuvchi faqat **1 MARTA** foydalana oladi!\n\n"
+        "🔒 **Ma'lumotlar xavfsizligi:**\n"
+        "• Faqat 1 marta so'rov\n"
+        "• Shaxsiy ma'lumotlar himoyalangan\n"
+        "• Cheklov talabalar ma'lumotlarini himoya qilish uchun\n\n"
         "❓ Savollar bo'lsa: 558885555"
     )
     
     bot.send_message(
         message.chat.id,
         help_text,
-        reply_markup=create_main_keyboard()
+        reply_markup=create_main_keyboard(),
+        parse_mode='Markdown'
     )
 
 # Pasport raqamiga qarab qidirish
@@ -164,16 +273,37 @@ def check_passport(message):
     if message.text in ["🔍 Pasport qidirish", "ℹ️ Mening ma'lumotlarim", "🆘 Yordam", "📞 INFO"]:
         return
     
+    user_id = message.from_user.id
+    
+    # Foydalanish cheklovini tekshirish
+    if not check_usage_limit(user_id):
+        user_data = get_user_info(user_id)
+        usage_count = user_data.get('usage_count', 0) if user_data else 0
+        
+        bot.send_message(
+            message.chat.id,
+            f"🚫 **Sizning cheklovingiz tugadi!**\n\n"
+            f"Siz allaqachon {usage_count} marta foydalangansiz.\n"
+            f"Har bir talaba faqat **1 marta** foydalana oladi.\n\n"
+            f"🔒 **Sabab:** Talabalar shaxsiy ma'lumotlarini himoya qilish\n\n"
+            f"📞 Qo'shimcha ma'lumot uchun: 558885555",
+            reply_markup=create_main_keyboard(),
+            parse_mode='Markdown'
+        )
+        return
+    
     passport = message.text.strip().upper()
     
     # Pasport formatini tekshirish
     if not re.match(r'^[A-Z]{2}\d{7}$', passport):
         bot.send_message(
             message.chat.id, 
-            "❌ Noto'g'ri format!\n\n"
-            "Pasport raqami quyidagi formatda bo'lishi kerak: AA1234567\n\n"
+            "❌ **Noto'g'ri format!**\n\n"
+            "Pasport raqami quyidagi formatda bo'lishi kerak: **AA1234567**\n\n"
+            "📝 Misol: AB1234567, CD9876543\n\n"
             "Iltimos, qaytadan kiriting:",
-            reply_markup=create_main_keyboard()
+            reply_markup=create_main_keyboard(),
+            parse_mode='Markdown'
         )
         return
 
@@ -181,15 +311,22 @@ def check_passport(message):
         bot.send_chat_action(message.chat.id, 'typing')
         data = load_data()
         
+        logger.info(f"Qidirilayotgan pasport: {passport}")
+        logger.info(f"Ustunlar: {list(data.columns)}")
+        
         # Sizning ustunlaringizga mos qidiruv
         if len(data.columns) >= 1 and len(data) > 0:
             passport_column = data.columns[0]  # Birinchi ustun
+            logger.info(f"Pasport ustuni: {passport_column}")
             
             # Pasport raqamini qidirish
             data[passport_column] = data[passport_column].fillna('').astype(str)
             row = data[data[passport_column].str.upper() == passport]
 
             if not row.empty:
+                # Foydalanuvchi ma'lumotlarini yangilash (cheklov bilan)
+                update_user_usage(message, "search")
+                
                 # Qolgan ustunlarni aniqlash
                 group = "Noma'lum"
                 link = "Havola mavjud emas"
@@ -215,31 +352,38 @@ def check_passport(message):
                     fakultet = fakultet_value if pd.notna(fakultet_value) else "Noma'lum"
                 
                 result_text = (
-                    "✅ Ma'lumot topildi!\n\n"
-                    f"📋 Pasport: {passport}\n"
-                    f"👤 Ism: {ism}\n"
-                    f"🏫 Fakultet: {fakultet}\n"
-                    f"👥 Guruh: {group}\n"
-                    f"🔗 Havola: {link}\n\n"
-                    "🎓 CYBER UNIVERSITY da o'qishingiz bilan tabriklaymiz!"
+                    "✅ **Ma'lumot topildi!**\n\n"
+                    f"📋 **Pasport:** {passport}\n"
+                    f"👤 **Ism:** {ism}\n"
+                    f"🏫 **Fakultet:** {fakultet}\n"
+                    f"👥 **Guruh:** {group}\n"
+                    f"🔗 **Havola:** {link}\n\n"
+                    "🎓 **CYBER UNIVERSITY** da o'qishingiz bilan tabriklaymiz!\n\n"
+                    "🚫 **ESLATMA:** Siz faqat 1 marta foydalana olasiz!"
                 )
                 bot.send_message(
                     message.chat.id, 
                     result_text,
-                    reply_markup=create_main_keyboard()
+                    reply_markup=create_main_keyboard(),
+                    parse_mode='Markdown'
                 )
             else:
                 bot.send_message(
                     message.chat.id, 
-                    f"❌ {passport} raqami bo'yicha ma'lumot topilmadi.\n\n"
-                    "Iltimos, pasport raqamingizni qaytadan tekshiring yoki "
-                    "administrator bilan bog'laning.",
-                    reply_markup=create_main_keyboard()
+                    f"❌ **{passport}** raqami bo'yicha ma'lumot topilmadi.\n\n"
+                    "Iltimos, quyidagilarni tekshiring:\n"
+                    "• Pasport raqamingizni to'g'ri kiritganingizni\n"
+                    "• Katta harflarda kiritganingizni\n"
+                    "• Format: AA1234567\n\n"
+                    "📞 Yordam kerak bo'lsa: 558885555",
+                    reply_markup=create_main_keyboard(),
+                    parse_mode='Markdown'
                 )
         else:
             bot.send_message(
                 message.chat.id, 
-                "❌ Jadvalda ma'lumotlar topilmadi yoki jadval bo'sh.",
+                "❌ Jadvalda ma'lumotlar topilmadi yoki jadval bo'sh.\n\n"
+                "📞 Texnik yordam uchun: 558885555",
                 reply_markup=create_main_keyboard()
             )
             
@@ -247,9 +391,12 @@ def check_passport(message):
         logger.error(f"Xatolik: {e}")
         bot.send_message(
             message.chat.id, 
-            f"😔 Xatolik yuz berdi: {str(e)[:100]}\n\n"
-            "Iltimos, keyinroq qayta urinib ko'ring.",
-            reply_markup=create_main_keyboard()
+            "😔 **Xatolik yuz berdi!**\n\n"
+            f"Xato: {str(e)[:100]}\n\n"
+            "Iltimos, keyinroq qayta urinib ko'ring yoki\n"
+            "📞 Texnik yordam uchun: 558885555",
+            reply_markup=create_main_keyboard(),
+            parse_mode='Markdown'
         )
 
 if __name__ == "__main__":
