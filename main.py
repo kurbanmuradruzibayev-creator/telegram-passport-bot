@@ -19,7 +19,7 @@ bot = telebot.TeleBot(TOKEN)
 
 # Google Sheets sozlamalari
 SHEET_ID = os.getenv("SHEET_ID")
-SHEET_GID = os.getenv("SHEET_GID", "0")  # default birinchi varaq
+SHEET_GID = os.getenv("SHEET_GID", "0")
 if not SHEET_ID:
     raise ValueError("SHEET_ID mavjud emas")
 
@@ -52,6 +52,7 @@ def load_data():
 
         df = pd.DataFrame(rows, columns=cols)
         logger.info(f"Ma'lumotlar muvaffaqiyatli yuklandi. {len(df)} qator")
+        logger.info(f"Ustunlar: {list(df.columns)}")  # Debug uchun
         return df
         
     except requests.exceptions.RequestException as e:
@@ -105,16 +106,34 @@ def check_passport(message):
         bot.send_chat_action(message.chat.id, 'typing')
         data = load_data()
         
-        if 'Pasport raqami' not in data.columns:
-            bot.send_message(message.chat.id, "❌ Jadvalda 'Pasport raqami' ustuni topilmadi.")
+        # Ustun nomlarini tekshirish
+        logger.info(f"Mavjud ustunlar: {list(data.columns)}")
+        
+        # Sizning ustunlaringizga mos qidiruv
+        passport_column = None
+        group_column = None
+        link_column = None
+        
+        # Ustun nomlarini tekshirish
+        for col in data.columns:
+            if 'pasport' in col.lower():
+                passport_column = col
+            if 'guruh' in col.lower() and 'link' not in col.lower():
+                group_column = col
+            if 'link' in col.lower():
+                link_column = col
+        
+        if not passport_column:
+            bot.send_message(message.chat.id, "❌ Jadvalda pasport raqami ustuni topilmadi.")
             return
 
         # Pasport raqamini qidirish
-        row = data.loc[data['Pasport raqami'].str.upper() == passport]
+        row = data.loc[data[passport_column].astype(str).str.upper() == passport]
 
         if not row.empty:
-            group = row.iloc[0]['Guruh'] if 'Guruh' in row.columns else "Noma'lum"
-            link = row.iloc[0]['Guruh linki'] if 'Guruh linki' in row.columns else "Havola mavjud emas"
+            # Guruh va link ustunlarini topish
+            group = row.iloc[0][group_column] if group_column and group_column in row.columns else "Noma'lum"
+            link = row.iloc[0][link_column] if link_column and link_column in row.columns else "Havola mavjud emas"
             
             result_text = f"""
 ✅ Ma'lumot topildi!
