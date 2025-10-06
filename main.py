@@ -6,7 +6,7 @@ import json
 import re
 import logging
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-import sqlite3
+import json
 from datetime import datetime
 
 # Logging sozlamalari
@@ -28,88 +28,65 @@ if not SHEET_ID:
 
 API_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:json&gid={SHEET_GID}"
 
-# SQLite bazasini yaratish
-def init_db():
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            last_name TEXT,
-            usage_count INTEGER DEFAULT 0,
-            last_used TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
+# JSON fayl orqali foydalanuvchi ma'lumotlarini saqlash
+USERS_FILE = 'users.json'
 
-init_db()
+def load_users():
+    """Foydalanuvchilarni yuklash"""
+    try:
+        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_users(users):
+    """Foydalanuvchilarni saqlash"""
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
 
 def check_usage_limit(user_id):
     """Foydalanish cheklovini tekshirish"""
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
+    users = load_users()
+    user = users.get(str(user_id))
     
-    cursor.execute('SELECT usage_count FROM users WHERE user_id = ?', (user_id,))
-    result = cursor.fetchone()
-    
-    conn.close()
-    
-    if result and result[0] >= 1:
+    if user and user.get('usage_count', 0) >= 1:
         return False  # Cheklovga duchor
     return True  # Foydalanish mumkin
 
 def update_user_usage(message):
     """Foydalanuvchi ma'lumotlarini yangilash"""
-    user_id = message.from_user.id
+    user_id = str(message.from_user.id)
     username = message.from_user.username
     first_name = message.from_user.first_name
     last_name = message.from_user.last_name
     
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
+    users = load_users()
     
-    # Foydalanuvchi mavjudligini tekshirish
-    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
-    existing_user = cursor.fetchone()
-    
-    if existing_user:
+    if user_id in users:
         # Yangilash
-        cursor.execute('''
-            UPDATE users 
-            SET usage_count = usage_count + 1, 
-                last_used = CURRENT_TIMESTAMP,
-                username = ?, first_name = ?, last_name = ?
-            WHERE user_id = ?
-        ''', (username, first_name, last_name, user_id))
+        users[user_id]['usage_count'] += 1
+        users[user_id]['last_used'] = datetime.now().isoformat()
+        users[user_id]['username'] = username
+        users[user_id]['first_name'] = first_name
+        users[user_id]['last_name'] = last_name
     else:
         # Yangi foydalanuvchi
-        cursor.execute('''
-            INSERT INTO users (user_id, username, first_name, last_name, usage_count, last_used)
-            VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-        ''', (user_id, username, first_name, last_name))
+        users[user_id] = {
+            'user_id': user_id,
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'usage_count': 1,
+            'created_at': datetime.now().isoformat(),
+            'last_used': datetime.now().isoformat()
+        }
     
-    conn.commit()
-    conn.close()
+    save_users(users)
 
 def get_user_info(user_id):
     """Foydalanuvchi ma'lumotlarini olish"""
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT user_id, username, first_name, last_name, usage_count, 
-               created_at, last_used 
-        FROM users WHERE user_id = ?
-    ''', (user_id,))
-    
-    result = cursor.fetchone()
-    conn.close()
-    
-    return result
+    users = load_users()
+    return users.get(str(user_id))
 
 def create_main_keyboard():
     """Asosiy keyboard yaratish"""
@@ -192,11 +169,15 @@ def user_info(message):
     user_data = get_user_info(user_id)
     
     if user_data:
-        user_id, username, first_name, last_name, usage_count, created_at, last_used = user_data
+        created_at = user_data.get('created_at', '')
+        last_used = user_data.get('last_used', '')
+        usage_count = user_data.get('usage_count', 0)
         
-        full_name = f"{first_name or ''} {last_name or ''}".strip() or "Noma'lum"
-        created_str = created_at.split()[0] if created_at else "Noma'lum"
-        last_used_str = last_used.split()[0] if last_used else "Hali foydalanilmagan"
+        # Sana formatini soddalashtirish
+        created_str = created_at.split('T')[0] if created_at else "Noma'lum"
+        last_used_str = last_used.split('T')[0] if last_used else "Hali foydalanilmagan"
+        
+        full_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or "Noma'lum"
         
         info_text = (
             f"📊 Sizning ma'lumotlaringiz:\n\n"
@@ -247,16 +228,19 @@ def debug_info(message):
         for i, col in enumerate(data.columns, 1):
             debug_text += f"{i}. '{col}'\n"
         
-        debug_text += "\n📝 BIRINCHI 3 QATOR:\n"
-        for i in range(min(3, len(data))):
-            row_text = f"Qator {i+1}: "
-            for col in data.columns:
-                value = data.iloc[i][col]
-                if pd.notna(value) and value != "":
-                    row_text += f"'{value}' "
-                else:
-                    row_text += "NULL "
-            debug_text += row_text + "\n"
+        if len(data) > 0:
+            debug_text += "\n📝 BIRINCHI 3 QATOR:\n"
+            for i in range(min(3, len(data))):
+                row_text = f"Qator {i+1}: "
+                for col in data.columns:
+                    value = data.iloc[i][col]
+                    if pd.notna(value) and value != "":
+                        row_text += f"'{value}' "
+                    else:
+                        row_text += "NULL "
+                debug_text += row_text + "\n"
+        else:
+            debug_text += "\n📝 Jadvalda ma'lumotlar yo'q"
         
         bot.send_message(message.chat.id, debug_text)
         
@@ -299,8 +283,7 @@ def check_passport(message):
         logger.info(f"Ustunlar: {list(data.columns)}")
         
         # Sizning ustunlaringizga mos qidiruv
-        # Birinchi ustun "Pasport raqami" deb faraz qilamiz
-        if len(data.columns) >= 1:
+        if len(data.columns) >= 1 and len(data) > 0:
             passport_column = data.columns[0]  # Birinchi ustun
             logger.info(f"Pasport ustuni: {passport_column}")
             
@@ -316,8 +299,6 @@ def check_passport(message):
                 group = "Noma'lum"
                 link = "Havola mavjud emas"
                 
-                # Ikkinchi ustun "To'liq ismi", uchinchi "Fakultet", 
-                # to'rtinchi "Guruh", beshinchi "GURUH LINKI" deb faraz qilamiz
                 if len(data.columns) >= 4:
                     group_value = row.iloc[0][data.columns[3]]
                     group = group_value if pd.notna(group_value) else "Noma'lum"
@@ -363,7 +344,7 @@ def check_passport(message):
         else:
             bot.send_message(
                 message.chat.id, 
-                "❌ Jadvalda ma'lumotlar topilmadi.",
+                "❌ Jadvalda ma'lumotlar topilmadi yoki jadval bo'sh.",
                 reply_markup=create_main_keyboard()
             )
             
