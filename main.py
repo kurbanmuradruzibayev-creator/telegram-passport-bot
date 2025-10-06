@@ -73,15 +73,12 @@ def load_data():
 # /start komandasi
 @bot.message_handler(commands=['start'])
 def start(message):
-    welcome_text = """
-Assalomu alaykum! 👋
-
-Pasport raqamingizni yuboring, men guruhingiz va guruh havolangizni topib beraman.
-
-📝 Pasport raqamini shu formatda yuboring: AA1234567
-
-Misol: AD9829103
-    """
+    welcome_text = (
+        "Assalomu alaykum! 👋\n\n"
+        "Pasport raqamingizni yuboring, men guruhingiz va guruh havolangizni topib beraman.\n\n"
+        "📝 Pasport raqamini shu formatda yuboring: AA1234567\n\n"
+        "Misol: AD9829103"
+    )
     bot.send_message(message.chat.id, welcome_text)
 
 # /debug komandasi
@@ -98,7 +95,7 @@ def debug_info(message):
         for i, col in enumerate(data.columns, 1):
             debug_text += f"{i}. '{col}'\n"
         
-        debug_text += f"\n📝 BIRINCHI 3 QATOR:\n"
+        debug_text += "\n📝 BIRINCHI 3 QATOR:\n"
         for i in range(min(3, len(data))):
             row_text = f"Qator {i+1}: "
             for col in data.columns:
@@ -124,13 +121,13 @@ def check_passport(message):
     
     # Pasport formatini tekshirish
     if not re.match(r'^[A-Z]{2}\d{7}$', passport):
-        bot.send_message(
-            message.chat.id, 
-            "❌ Noto'g'ri format!\n\n" +
-            "Pasport raqami quyidagi formatda bo'lishi kerak: AA1234567\n\n" +
-            "📝 Misol: AD9829103\n" +
+        error_msg = (
+            "❌ Noto'g'ri format!\n\n"
+            "Pasport raqami quyidagi formatda bo'lishi kerak: AA1234567\n\n"
+            "📝 Misol: AD9829103\n"
             "Iltimos, qaytadan kiriting:"
         )
+        bot.send_message(message.chat.id, error_msg)
         return
 
     try:
@@ -158,28 +155,40 @@ def check_passport(message):
                 # Ikkinchi ustun "To'liq ismi", uchinchi "Fakultet", 
                 # to'rtinchi "Guruh", beshinchi "GURUH LINKI" deb faraz qilamiz
                 if len(data.columns) >= 4:
-                    group = row.iloc[0][data.columns[3]] if pd.notna(row.iloc[0][data.columns[3]]) else "Noma'lum"
+                    group_value = row.iloc[0][data.columns[3]]
+                    group = group_value if pd.notna(group_value) else "Noma'lum"
                 
                 if len(data.columns) >= 5:
-                    link = row.iloc[0][data.columns[4]] if pd.notna(row.iloc[0][data.columns[4]]) else "Havola mavjud emas"
+                    link_value = row.iloc[0][data.columns[4]]
+                    link = link_value if pd.notna(link_value) else "Havola mavjud emas"
                 
-                result_text = f"""
-✅ Ma'lumot topildi!
-
-📋 Pasport: {passport}
-👤 Ism: {row.iloc[0][data.columns[1]] if len(data.columns) >= 2 else 'Noma\'lum'}
-🏫 Fakultet: {row.iloc[0][data.columns[2]] if len(data.columns) >= 3 else 'Noma\'lum'}
-👥 Guruh: {group}
-🔗 Havola: {link}
-
-Yana qayta tekshirishingiz mumkin!
-                """
+                # Ism va fakultet
+                ism = "Noma'lum"
+                fakultet = "Noma'lum"
+                
+                if len(data.columns) >= 2:
+                    ism_value = row.iloc[0][data.columns[1]]
+                    ism = ism_value if pd.notna(ism_value) else "Noma'lum"
+                
+                if len(data.columns) >= 3:
+                    fakultet_value = row.iloc[0][data.columns[2]]
+                    fakultet = fakultet_value if pd.notna(fakultet_value) else "Noma'lum"
+                
+                result_text = (
+                    "✅ Ma'lumot topildi!\n\n"
+                    f"📋 Pasport: {passport}\n"
+                    f"👤 Ism: {ism}\n"
+                    f"🏫 Fakultet: {fakultet}\n"
+                    f"👥 Guruh: {group}\n"
+                    f"🔗 Havola: {link}\n\n"
+                    "Yana qayta tekshirishingiz mumkin!"
+                )
                 bot.send_message(message.chat.id, result_text)
             else:
                 bot.send_message(
                     message.chat.id, 
-                    f"❌ {passport} raqami bo'yicha ma'lumot topilmadi.\n\n" +
-                    "Iltimos, pasport raqamingizni qaytadan tekshiring yoki " +
+                    f"❌ {passport} raqami bo'yicha ma'lumot topilmadi.\n\n"
+                    "Iltimos, pasport raqamingizni qaytadan tekshiring yoki "
                     "administrator bilan bog'laning."
                 )
         else:
@@ -187,11 +196,11 @@ Yana qayta tekshirishingiz mumkin!
             
     except Exception as e:
         logger.error(f"Xatolik: {e}")
-        bot.send_message(
-            message.chat.id, 
-            f"😔 Xatolik yuz berdi: {str(e)[:100]}\n\n" +
+        error_message = (
+            f"😔 Xatolik yuz berdi: {str(e)[:100]}\n\n"
             "Iltimos, keyinroq qayta urinib ko'ring yoki /debug buyrug'i bilan tekshiring."
         )
+        bot.send_message(message.chat.id, error_message)
 
 if __name__ == "__main__":
     logger.info("Bot ishga tushdi...")
