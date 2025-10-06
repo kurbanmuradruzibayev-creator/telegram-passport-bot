@@ -48,80 +48,6 @@ def init_db():
 
 init_db()
 
-# Til sozlamalari
-LANGUAGES = {
-    'uz': {
-        'welcome': "Assalomu alaykum! 👋\n\nPasport raqamingizni yuboring, men guruhingiz va guruh havolangizni topib beraman.",
-        'format': "📝 Pasport raqamini shu formatda yuboring: AA1234567",
-        'example': "Misol: AD9829103",
-        'change_lang': "🌐 Tilni o'zgartirish",
-        'search': "🔍 Pasport qidirish",
-        'help': "🆘 Yordam",
-        'debug': "🐛 Debug ma'lumot",
-        'info': "ℹ️ Mening ma'lumotlarim",
-        'back': "⬅️ Orqaga",
-        'wrong_format': "❌ Noto'g'ri format! Pasport raqami quyidagi formatda bo'lishi kerak: AA1234567",
-        'not_found': "❌ {} raqami bo'yicha ma'lumot topilmadi.",
-        'found': "✅ Ma'lumot topildi!\n\n📋 Pasport: {}\n👤 Ism: {}\n🏫 Fakultet: {}\n👥 Guruh: {}\n🔗 Havola: {}",
-        'error': "😔 Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.",
-        'choose_lang': "🌐 Tilni tanlang:",
-        'main_menu': "🏠 Asosiy menyu",
-        'usage_limit': "🚫 Siz faqat 1 marta foydalana olasiz! Bu shaxsiy ma'lumotlarni himoya qilish uchun.",
-        'user_info': "📊 Sizning ma'lumotlaringiz:\n\n👤 ID: {}\n📛 Ism: {}\n📅 Birinchi foydalanish: {}\n🔢 Foydalanishlar soni: {}/1\n⏰ So'ngi foydalanish: {}",
-        'first_usage': "Bu sizning birinchi foydalanishingiz. Ma'lumotlaringiz saqlandi.",
-        'admin_contact': "📞 Admin bilan bog'lanish"
-    },
-    'ru': {
-        'welcome': "Здравствуйте! 👋\n\nОтправьте номер паспорта, и я найду вашу группу и ссылку на группу.",
-        'format': "📝 Отправьте номер паспорта в формате: AA1234567",
-        'example': "Пример: AD9829103",
-        'change_lang': "🌐 Сменить язык",
-        'search': "🔍 Поиск паспорта",
-        'help': "🆘 Помощь",
-        'debug': "🐛 Отладка",
-        'info': "ℹ️ Мои данные",
-        'back': "⬅️ Назад",
-        'wrong_format': "❌ Неправильный формат! Номер паспорта должен быть в формате: AA1234567",
-        'not_found': "❌ По номеру {} информация не найдена.",
-        'found': "✅ Информация найдена!\n\n📋 Паспорт: {}\n👤 Имя: {}\n🏫 Факультет: {}\n👥 Группа: {}\n🔗 Ссылка: {}",
-        'error': "😔 Произошла ошибка. Пожалуйста, попробуйте позже.",
-        'choose_lang': "🌐 Выберите язык:",
-        'main_menu': "🏠 Главное меню",
-        'usage_limit': "🚫 Вы можете использовать только 1 раз! Это для защиты личных данных.",
-        'user_info': "📊 Ваши данные:\n\n👤 ID: {}\n📛 Имя: {}\n📅 Первое использование: {}\n🔢 Количество использований: {}/1\n⏰ Последнее использование: {}",
-        'first_usage': "Это ваше первое использование. Ваши данные сохранены.",
-        'admin_contact': "📞 Связаться с админом"
-    },
-    'en': {
-        'welcome': "Hello! 👋\n\nSend your passport number, and I'll find your group and group link.",
-        'format': "📝 Send passport number in format: AA1234567",
-        'example': "Example: AD9829103",
-        'change_lang': "🌐 Change language",
-        'search': "🔍 Search passport",
-        'help': "🆘 Help",
-        'debug': "🐛 Debug info",
-        'info': "ℹ️ My information",
-        'back': "⬅️ Back",
-        'wrong_format': "❌ Wrong format! Passport number should be in format: AA1234567",
-        'not_found': "❌ No information found for number {}.",
-        'found': "✅ Information found!\n\n📋 Passport: {}\n👤 Name: {}\n🏫 Faculty: {}\n👥 Group: {}\n🔗 Link: {}",
-        'error': "😔 An error occurred. Please try again later.",
-        'choose_lang': "🌐 Choose language:",
-        'main_menu': "🏠 Main menu",
-        'usage_limit': "🚫 You can only use 1 time! This is to protect personal data.",
-        'user_info': "📊 Your information:\n\n👤 ID: {}\n📛 Name: {}\n📅 First usage: {}\n🔢 Usage count: {}/1\n⏰ Last used: {}",
-        'first_usage': "This is your first usage. Your data has been saved.",
-        'admin_contact': "📞 Contact admin"
-    }
-}
-
-# Foydalanuvchi tillari saqlash
-user_languages = {}
-
-def get_user_language(chat_id):
-    """Foydalanuvchi tilini olish"""
-    return user_languages.get(chat_id, 'uz')
-
 def check_usage_limit(user_id):
     """Foydalanish cheklovini tekshirish"""
     conn = sqlite3.connect('users.db')
@@ -185,39 +111,17 @@ def get_user_info(user_id):
     
     return result
 
-def create_main_keyboard(lang):
+def create_main_keyboard():
     """Asosiy keyboard yaratish"""
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    lang_text = LANGUAGES[lang]
     
     keyboard.add(
-        KeyboardButton(lang_text['search']),
-        KeyboardButton(lang_text['info']),
-        KeyboardButton(lang_text['help']),
-        KeyboardButton(lang_text['debug'])
+        KeyboardButton("🔍 Pasport qidirish"),
+        KeyboardButton("ℹ️ Mening ma'lumotlarim"),
+        KeyboardButton("🆘 Yordam"),
+        KeyboardButton("🐛 Debug ma'lumot")
     )
-    keyboard.add(KeyboardButton(lang_text['change_lang']))
     
-    return keyboard
-
-def create_language_keyboard(lang):
-    """Til tanlash keyboard yaratish"""
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    lang_text = LANGUAGES[lang]
-    
-    keyboard.add(
-        KeyboardButton("🇺🇿 O'zbek"),
-        KeyboardButton("🇷🇺 Русский"),
-        KeyboardButton("🇺🇸 English")
-    )
-    keyboard.add(KeyboardButton(lang_text['back']))
-    
-    return keyboard
-
-def create_back_keyboard(lang):
-    """Faqat orqaga tugmasi"""
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(KeyboardButton(LANGUAGES[lang]['back']))
     return keyboard
 
 def load_data():
@@ -268,29 +172,22 @@ def load_data():
 # /start komandasi
 @bot.message_handler(commands=['start'])
 def start(message):
-    user_id = message.from_user.id
-    user_languages[message.chat.id] = 'uz'  # Default til
-    lang = get_user_language(message.chat.id)
-    lang_text = LANGUAGES[lang]
-    
     welcome_text = (
-        f"{lang_text['welcome']}\n\n"
-        f"{lang_text['format']}\n\n"
-        f"{lang_text['example']}"
+        "Assalomu alaykum! 👋\n\n"
+        "Pasport raqamingizni yuboring, men guruhingiz va guruh havolangizni topib beraman.\n\n"
+        "📝 Pasport raqamini shu formatda yuboring: AA1234567"
     )
     
     bot.send_message(
         message.chat.id, 
         welcome_text,
-        reply_markup=create_main_keyboard(lang)
+        reply_markup=create_main_keyboard()
     )
 
 # INFO tugmasi
-@bot.message_handler(func=lambda msg: any(msg.text == LANGUAGES[lang]['info'] for lang in LANGUAGES))
+@bot.message_handler(func=lambda msg: msg.text == "ℹ️ Mening ma'lumotlarim")
 def user_info(message):
     user_id = message.from_user.id
-    lang = get_user_language(message.chat.id)
-    lang_text = LANGUAGES[lang]
     
     user_data = get_user_info(user_id)
     
@@ -301,8 +198,187 @@ def user_info(message):
         created_str = created_at.split()[0] if created_at else "Noma'lum"
         last_used_str = last_used.split()[0] if last_used else "Hali foydalanilmagan"
         
-        info_text = lang_text['user_info'].format(
-            user_id, full_name, created_str, usage_count, last_used_str
+        info_text = (
+            f"📊 Sizning ma'lumotlaringiz:\n\n"
+            f"👤 ID: {user_id}\n"
+            f"📛 Ism: {full_name}\n"
+            f"📅 Birinchi foydalanish: {created_str}\n"
+            f"🔢 Foydalanishlar soni: {usage_count}/1\n"
+            f"⏰ So'ngi foydalanish: {last_used_str}"
         )
     else:
-        info_text = "📊 Siz hali foydalanmagan
+        info_text = "📊 Siz hali foydalanmagansiz. Birinchi marta pasport qidiruvingizda ma'lumotlaringiz saqlanadi."
+    
+    bot.send_message(
+        message.chat.id,
+        info_text,
+        reply_markup=create_main_keyboard()
+    )
+
+# Yordam
+@bot.message_handler(func=lambda msg: msg.text == "🆘 Yordam")
+def help_command(message):
+    help_text = (
+        "🤖 Botdan foydalanish:\n\n"
+        "1. 🔍 Pasport qidirish - pasport raqamingizni kiriting\n"
+        "2. ℹ️ Mening ma'lumotlarim - sizning foydalanish statistikangiz\n"
+        "3. 🐛 Debug ma'lumot - texnik ma'lumotlar\n\n"
+        "📝 Pasport formati: AA1234567\n"
+        "🚫 Har bir foydalanuvchi faqat 1 marta foydalana oladi"
+    )
+    
+    bot.send_message(
+        message.chat.id,
+        help_text,
+        reply_markup=create_main_keyboard()
+    )
+
+# Debug
+@bot.message_handler(func=lambda msg: msg.text == "🐛 Debug ma'lumot")
+def debug_info(message):
+    try:
+        data = load_data()
+        
+        debug_text = "🔍 DEBUG MA'LUMOTLARI:\n\n"
+        debug_text += f"📊 Jadval o'lchami: {data.shape}\n"
+        debug_text += f"🔤 Ustunlar soni: {len(data.columns)}\n\n"
+        
+        debug_text += "📋 USTUNLAR RO'YXATI:\n"
+        for i, col in enumerate(data.columns, 1):
+            debug_text += f"{i}. '{col}'\n"
+        
+        debug_text += "\n📝 BIRINCHI 3 QATOR:\n"
+        for i in range(min(3, len(data))):
+            row_text = f"Qator {i+1}: "
+            for col in data.columns:
+                value = data.iloc[i][col]
+                if pd.notna(value) and value != "":
+                    row_text += f"'{value}' "
+                else:
+                    row_text += "NULL "
+            debug_text += row_text + "\n"
+        
+        bot.send_message(message.chat.id, debug_text)
+        
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Debug xatosi: {e}")
+
+# Pasport raqamiga qarab qidirish
+@bot.message_handler(func=lambda msg: True)
+def check_passport(message):
+    if message.text in ["🔍 Pasport qidirish", "ℹ️ Mening ma'lumotlarim", "🆘 Yordam", "🐛 Debug ma'lumot"]:
+        return
+    
+    user_id = message.from_user.id
+    
+    # Foydalanish cheklovini tekshirish
+    if not check_usage_limit(user_id):
+        bot.send_message(
+            message.chat.id,
+            "🚫 Siz faqat 1 marta foydalana olasiz! Bu shaxsiy ma'lumotlarni himoya qilish uchun.",
+            reply_markup=create_main_keyboard()
+        )
+        return
+    
+    passport = message.text.strip().upper()
+    
+    # Pasport formatini tekshirish
+    if not re.match(r'^[A-Z]{2}\d{7}$', passport):
+        bot.send_message(
+            message.chat.id, 
+            "❌ Noto'g'ri format! Pasport raqami quyidagi formatda bo'lishi kerak: AA1234567",
+            reply_markup=create_main_keyboard()
+        )
+        return
+
+    try:
+        bot.send_chat_action(message.chat.id, 'typing')
+        data = load_data()
+        
+        logger.info(f"Qidirilayotgan pasport: {passport}")
+        logger.info(f"Ustunlar: {list(data.columns)}")
+        
+        # Sizning ustunlaringizga mos qidiruv
+        # Birinchi ustun "Pasport raqami" deb faraz qilamiz
+        if len(data.columns) >= 1:
+            passport_column = data.columns[0]  # Birinchi ustun
+            logger.info(f"Pasport ustuni: {passport_column}")
+            
+            # Pasport raqamini qidirish
+            data[passport_column] = data[passport_column].fillna('').astype(str)
+            row = data[data[passport_column].str.upper() == passport]
+
+            if not row.empty:
+                # Foydalanuvchi ma'lumotlarini yangilash
+                update_user_usage(message)
+                
+                # Qolgan ustunlarni aniqlash
+                group = "Noma'lum"
+                link = "Havola mavjud emas"
+                
+                # Ikkinchi ustun "To'liq ismi", uchinchi "Fakultet", 
+                # to'rtinchi "Guruh", beshinchi "GURUH LINKI" deb faraz qilamiz
+                if len(data.columns) >= 4:
+                    group_value = row.iloc[0][data.columns[3]]
+                    group = group_value if pd.notna(group_value) else "Noma'lum"
+                
+                if len(data.columns) >= 5:
+                    link_value = row.iloc[0][data.columns[4]]
+                    link = link_value if pd.notna(link_value) else "Havola mavjud emas"
+                
+                # Ism va fakultet
+                ism = "Noma'lum"
+                fakultet = "Noma'lum"
+                
+                if len(data.columns) >= 2:
+                    ism_value = row.iloc[0][data.columns[1]]
+                    ism = ism_value if pd.notna(ism_value) else "Noma'lum"
+                
+                if len(data.columns) >= 3:
+                    fakultet_value = row.iloc[0][data.columns[2]]
+                    fakultet = fakultet_value if pd.notna(fakultet_value) else "Noma'lum"
+                
+                result_text = (
+                    "✅ Ma'lumot topildi!\n\n"
+                    f"📋 Pasport: {passport}\n"
+                    f"👤 Ism: {ism}\n"
+                    f"🏫 Fakultet: {fakultet}\n"
+                    f"👥 Guruh: {group}\n"
+                    f"🔗 Havola: {link}\n\n"
+                    "Yana qayta tekshirishingiz mumkin!"
+                )
+                bot.send_message(
+                    message.chat.id, 
+                    result_text,
+                    reply_markup=create_main_keyboard()
+                )
+            else:
+                bot.send_message(
+                    message.chat.id, 
+                    f"❌ {passport} raqami bo'yicha ma'lumot topilmadi.\n\n"
+                    "Iltimos, pasport raqamingizni qaytadan tekshiring yoki "
+                    "administrator bilan bog'laning.",
+                    reply_markup=create_main_keyboard()
+                )
+        else:
+            bot.send_message(
+                message.chat.id, 
+                "❌ Jadvalda ma'lumotlar topilmadi.",
+                reply_markup=create_main_keyboard()
+            )
+            
+    except Exception as e:
+        logger.error(f"Xatolik: {e}")
+        bot.send_message(
+            message.chat.id, 
+            f"😔 Xatolik yuz berdi: {str(e)[:100]}\n\n"
+            "Iltimos, keyinroq qayta urinib ko'ring.",
+            reply_markup=create_main_keyboard()
+        )
+
+if __name__ == "__main__":
+    logger.info("Bot ishga tushdi...")
+    try:
+        bot.infinity_polling()
+    except Exception as e:
+        logger.error(f"Botda xatolik: {e}")
